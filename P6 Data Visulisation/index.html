@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <script src="http://d3js.org/d3.v3.min.js"></script>
+        <script src="http://dimplejs.org/dist/dimple.v2.0.0.min.js"></script>
+        <style>
+            h1 {text-align: center;)
+			
+		</style>
+
+    </head>
+    <body>
+        <script type="text/javascript">
+            function draw(data) {
+
+                /*
+                 D3.js setup code
+                 */
+
+                "use strict";
+                // Chart heading added to visualisation
+                var title = d3.select("body").append("h1").text("Titanic: The Data Tells A Story");
+
+                var margin = 75,
+                    width = 1400 - margin,
+                    height = 600 - margin;
+
+                var svg = d3.select("body").append("svg").attr("width", width + margin).attr("height", height + margin).append('g').attr('class', 'chart');
+						
+                /*
+                 Dimple.js Chart construction code
+                 */
+                // 1. Format the data:
+                //  The '+' tells d3.js that the data is numeric
+                //  add whatever variables you need to be numeric:
+                data.forEach(function(d) {
+                    d.Age = +d['Age'];
+                    d.PassengerId = +d['PassengerId'];
+					d.Survived = +d['Survived'];
+					d.Pclass = d.Pclass
+                });
+
+                var myChart = new dimple.chart(svg, data);
+                console.log(data);
+                var x = myChart.addMeasureAxis("y", "Survived");
+				x.title = "Number of Passengers";
+								
+                //  2. Use a category axis for text (and discrete) variables
+                myChart.addCategoryAxis("x", "Sex");
+
+                //  3. Add a key, to stop addSeries aggregating:
+                var mySeries = myChart.addSeries(['Survived'], dimple.plot.bar);
+                mySeries.aggregate = dimple.aggregateMethod.count;
+				var myLegend = myChart.addLegend(940, 5, 60, 100, "Right");
+				myLegend._getEntries = function() {
+                    var orderedValues = ["0", "1"];
+                    var newNames = {
+                        "0" : "Perished",
+                        "1" : "Survived"
+                    };
+                    var entries = [];
+                    orderedValues.forEach(function(v) {
+                        entries.push({
+                            key : newNames[v],
+                            fill : myChart.getColor(v).fill,
+                            stroke : myChart.getColor(v).stroke,
+                            opacity : myChart.getColor(v).opacity,
+                            series : [mySeries],
+                            aggField : [v]
+                        });
+                    }, this);
+                    return entries;
+                };
+				
+				
+				myChart.draw();
+				
+				var categories = [ "All", "Male", "Female" ];
+				var cat_buttons = d3.select("body")
+					.selectAll("input")
+					.data(categories)
+					.enter()
+					.append("input")
+					.attr("type", "button")
+					.attr("class", "button")
+					.attr("value", function(d) {
+						return d;
+					}).attr("id", function(d) {
+						return d;
+					})
+				
+				d3.select("#All").on("click", function() {
+					myChart.data = dimple.filterData(data, "Sex", ["male", "female"]);
+					myChart.draw();
+				});
+				
+				d3.select("#Male").on("click", function() {
+
+					myChart.data = dimple.filterData(data, "Sex", "male");
+					myChart.draw();
+				});
+				
+				d3.select("#Female").on("click", function() {
+
+					myChart.data = dimple.filterData(data, "Sex", "female");
+					myChart.draw();
+				});
+				
+            };
+				
+
+		//Set up and read data from CSV file and draw chart
+		data = d3.csv("titanic_data.csv", draw)
+		
+		
+     </script>
+
+    </body>
+</html>

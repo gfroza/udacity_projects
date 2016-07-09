@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Titanic Disaster: Survivor Demographics</title>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="http://dimplejs.org/dist/dimple.v2.2.0.min.js"></script>
+  <style>
+    h3 {
+    text-align: center;
+    line-height: 0px;
+    width: 90%;
+    }
+    svg {
+      margin-left: 5%;
+    }
+    div.categories_buttons {
+      position: fixed;
+      top: 30%;
+      left: 85%;
+      padding: 3px;
+      margin: 7px;
+    }
+    div.indiv_btn {
+      background-color: rgb(251, 201, 127);
+      border: 1px solid #BBB;
+      border-radius: 5px;
+      font-size: small;
+      cursor:pointer;
+      text-align: center;
+      padding: 3px;
+    }
+    div.count_percentage_buttons {
+      position: fixed;
+      top: 50%;
+      left: 85%;
+      padding: 3px;
+      margin: 7px;
+    }
+  </style>
+</head>
+<body id="chartContainer" style="height: 95vh">
+  <script type="text/javascript">
+    // Heading for our chart
+    var title = d3.select("body").append("h3")
+      .text("Titanic Disaster: Survivor Demographics")
+      .append("h6")
+      .text("(Women, Children and Rich survived better!)");
+    // Create SVG containers to hold the charts
+    // Use % of width and height to make charts responsive (resize according to window size)
+    var svg1 = dimple.newSvg("body", "80%", "80%");
+    var chart1;
+    var data = [];
+    var nMiliSec_Transition = 500;
+    // Read the data and create charts
+    d3.csv("titanic_data.csv" function(data_in) {
+       // Postprocess data table
+       // a) Add a new varaible "AgeGroup" indicating whether given passenger
+       // was an Adult (> 18 years) or Child. For the passengers not having the
+       // the data for their age, we club them in "Adult" category.
+       // b) Rename Survived field values from (01,1) to (Died, Survived)
+       // c) Rename "PassengerId" to "Passengers" as we are using it for count purpose
+       data = data_in.map(function(val) {
+         val.AgeGroup = ( val.Age != "" && val.Age < 18 ? "Child (Age < 18)" : "Adult");
+         val.Survived = ( val.Survived != "" && val.Survived == 1 ? "Survived" : "Died");
+         val.Passengers = val.PassengerId;
+         delete val.PassengerId;
+         return val; })
+       chart1 = draw_chart(data, svg1, "Sex", "Sex", "Count");
+      });
+    // Function to create and drawing a chart using dimple
+    // data - data array
+    // svg - svg container
+    // xVar - categorical variable from "data" to plot on x-Axis
+    // xLabel - label text for for x-Axis
+    // CountOrPercentage - "Count" or "Percentage"
+    function draw_chart(data, svg, xVar, xLabel, CountOrPercentage) {
+      var chart = new dimple.chart(svg, data);
+      chart.width = "70%";
+      chart.height = "70%";
+      var x = chart.addCategoryAxis("x", xVar);
+      x.title = xLabel;
+      // We are using "Passengers" for y-axis to allow us to uniquely
+      // count number of passengers and not for their id itself!
+      if( CountOrPercentage == "Count" ) {
+        var y = chart.addMeasureAxis("y", "Passengers");
+        y.title = "Number of Passengers";
+      }
+      else {
+        var y = chart.addPctAxis("y", "Passengers");
+        y.title = "Percentage of Passengers";
+      }
+      // Draw stacked column bar grouped by count of survival status
+      var mySeries = chart.addSeries(["Survived"], dimple.plot.bar);
+      mySeries.aggregate = dimple.aggregateMethod.count;
+      //Assign color blind friendly colors for red and green
+      //chart.assignColor("0", "rgb(204,121,167)"); // reddish purple
+      //chart.assignColor("1", "rgb(0,158,115)"); // bluish green
+      // Assign balanced natural colors as per rules for using colors
+      chart.assignColor("Died", "rgb(205,112,88)"); // moderate red
+      chart.assignColor("Survived", "rgb(121,195,106)"); // lime green
+      // Draw a legend for color coding of surivial status
+      var legend = chart.addLegend("88%", "6%", "10%", "20%", "right");
+      chart.draw(nMiliSec_Transition);
+      //update_legend_text();
+      return chart;
+    }
+    // Update the legend text to more readable label then default
+    function update_legend_text() {
+      d3.select(".dimple-0 .dimple-legend-text").text("Died");
+      d3.select(".dimple-1 .dimple-legend-text").text("Survived");
+    }
+    // Interactive selection for chart
+    // -Across different categories
+    // -Display as actual count or Percentage
+    var categories = [ "Sex", "AgeGroup", "Pclass" ];
+    var categories_labels = {"Sex": "Sex", "AgeGroup": "Age Group", "Pclass": "Passenger Cabin Class" };
+    var current_category = "Sex";
+    var current_count_percentage = "Count";
+    var cat_buttons = d3.select("body")
+            .append("div")
+            .attr("class", "categories_buttons")
+            .selectAll("div")
+            .data(categories)
+            .enter()
+            .append("div")
+            .attr("class", "indiv_btn")
+            .text(function(d) {
+                return d;
+            });
+    cat_buttons.on("click", function(d) {
+        d3.select(".categories_buttons")
+          .selectAll("div")
+          .transition()
+          .duration(500)
+          .style("color", "black")
+          .style("background", "rgb(251, 201, 127)");
+        d3.select(this)
+          .transition()
+          .duration(500)
+          .style("background", "lightBlue")
+          .style("color", "white");
+        // Based on interactive selection draw new chart after removing previous one
+        svg1.selectAll("*").remove();
+        chart1 = draw_chart(data, svg1, d, categories_labels[d] ,current_count_percentage);
+        current_category = d;
+    });
+    var count_percentage = [ "Count", "Percentage" ];
+    var count_buttons = d3.select("body")
+            .append("div")
+            .attr("class", "count_percentage_buttons")
+            .selectAll("div")
+            .data(count_percentage)
+            .enter()
+            .append("div")
+            .attr("class", "indiv_btn")
+            .text(function(d) {
+                return d;
+            });
+    count_buttons.on("click", function(d) {
+        d3.select(".count_percentage_buttons")
+          .selectAll("div")
+          .transition()
+          .duration(500)
+          .style("color", "black")
+          .style("background", "rgb(251, 201, 127)");
+        d3.select(this)
+          .transition()
+          .duration(500)
+          .style("background", "lightBlue")
+          .style("color", "white");
+        // Based on interactive selection draw new chart after removing previous one
+        svg1.selectAll("*").remove();
+        chart1 = draw_chart(data, svg1, current_category, categories_labels[current_category], d);
+        current_count_percentage = d;
+    });
+    // After resize of browser window, do a fast redraw without worrying of data change
+    window.onresize = function () {
+      chart1.draw(nMiliSec_Transition, true);
+      //update_legend_text();
+    };
+  </script>
+</body>
+</html>
